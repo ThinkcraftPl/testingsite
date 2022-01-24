@@ -1,5 +1,5 @@
 <script>
-	import { getContext, onMount } from 'svelte';
+	import { getContext, onMount, onDestroy } from 'svelte';
 	let c, ctx;
 	let G=null,N=null; 	//graph array of arrays and number of nodes
 	let P=null,R=null, BR=null; 	//array of positions, radious of nodes and radious of big circle
@@ -573,7 +573,10 @@
 		if(FO==null)
 			FO=setInterval(fetchOptions,10);
 	});
-	
+	onDestroy(()=>{
+		clearInterval(FO);
+		clearInterval(CH);
+	});
 </script>
 
 <canvas id="responsive-canvas"></canvas>

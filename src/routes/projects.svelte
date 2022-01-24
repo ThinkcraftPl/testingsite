@@ -4,6 +4,7 @@
 			<a class="project" href="/graphgen">Graph Generator</a>
 		</div>
 		<div class="normal">
+			<a class="project" href="/planetgen">Planet Generator</a>
 		</div>
 		<div class="normal">
 		</div>
