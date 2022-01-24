@@ -1,6 +1,6 @@
 <main>
 	<div class="wrapper">
-		<div class="important">
+		<div class="normal">
 			<a class="project" href="/graphgen">Graph Generator</a>
 		</div>
 		<div class="normal">

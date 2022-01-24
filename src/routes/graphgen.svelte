@@ -3,16 +3,18 @@
 	let c, ctx;
 	let G=null,N=null; 	//graph array of arrays and number of nodes
 	let P=null,R=null, BR=null; 	//array of positions, radious of nodes and radious of big circle
+	let directional=null; //is current graph directional
 	let CS= new Array;		//collision check stack
 	let CH=null;		//is collision handler on
 	let selNode=-1; 	//selected node
-
+	let allow_loops_opt=false, directional_opt=false, edge_weight_opt=false, tree_opt=false, connectivity_opt=false, use_probability_opt=false, FO=null;
 	function getRandomFloat(min,max){
 		return (Math.random() * (max - min) ) + min;
 	}
 	function getRandomInt(min,max){
 		return Math.round((Math.random() * (max - min) )) + min;
 	}
+
 	function setCanvas(canvas){
 		//setup canvas on startup
 		c=canvas;
@@ -53,7 +55,7 @@
 			//for each node find all connections
 			node.forEach(connection=>{
 				//add to output string
-				output+=i+" "+parseInt(connection.split('#')[0])+" "+parseInt(connection.split('#')[1])+"\n";
+				output+=i+" "+connection[0]+" "+connection[1]+"\n";
 			});
 		});
 		//copy output string to clipboard
@@ -61,60 +63,181 @@
 		return false;
 	}
 	function generateGraph(){
-		//get number of nodes, probability, and weight ranges from input boxes
-		let nodes = parseInt(document.getElementById('nodes').value);
-		let probability = parseFloat(document.getElementById('probability').value);
-		let minWeight = parseInt(document.getElementById('min-weight').value)
-		let maxWeight = parseInt(document.getElementById('max-weight').value)
-		//validate input
-		if(isNaN(nodes)||isNaN(probability))
-		{
-			drawMessage("Type number of nodes and probability!");
-			return false;
-		}
-		if(isNaN(minWeight)||isNaN(maxWeight))
-		{
-			minWeight=0;
-			maxWeight=0;
-		}
-		console.log(nodes+" "+probability);
-		//create graph structure
-		let graph = new Array();
-		for(let i =1; i<=nodes; i++)
-			graph[i]=new Array();
-		//for each node get possible connections
-		for(let i =0; i<nodes; i++)
-		{
-			for(let j =i; j<nodes; j++)
+		if(use_probability_opt){
+			let nodes = parseInt(document.getElementById('nodes').value);
+			let probability = parseFloat(document.getElementById('probability').value);
+			//validate input
+			if(isNaN(nodes)||isNaN(probability))
 			{
-				if(i!=j){
-					//calculate probability and check if connection is made
+				drawMessage("Type number of nodes and probability!");
+				return false;
+			}
+			console.log(nodes+" "+probability);
+
+			N=nodes;
+			G=new Array;
+			for(let i =1; i<=N; i++)
+				G[i]=new Array();
+			for(let i =1; i<=N; i++){
+				for(let j = (allow_loops_opt?i:i+1); j<=N; j++){
 					if(getRandomFloat(0,1)<probability)
 					{
 						//add connection
-						graph[i+1].push(j+1+"#"+getRandomInt(minWeight,maxWeight));
+						let temp = new Array()
+						if(directional_opt)
+						{
+							if(getRandomFloat(0,1)<0.5)
+							{
+								temp.push(j);
+								G[i].push(temp);
+							}
+							else
+							{
+								temp.push(i);
+								G[j].push(temp);
+							}
+						}
+						else
+						{
+							temp.push(j);
+							G[i].push(temp); //connection info - node
+						}
 					}
 				}
 			}
+
+			P=new Array();
+
+			for(let i =1; i<=N; i++)
+			{
+				P[i]=new Array();
+				P[i][0]=((2*Math.PI*i)/N);
+				P[i][1]=1;
+			}
+			//console.log(G);
+			//console.log(P);
+			//draw graph
+			drawGraph();
+		}else{
+			let nodes = parseInt(document.getElementById('nodes').value);
+			let edges = parseInt(document.getElementById('probability').value);
+			//validate input
+			if(isNaN(nodes)||isNaN(edges))
+			{
+				drawMessage("Type number of nodes and edge number!");
+				return false;
+			}
+			console.log(nodes+" "+edges);
+			
+			N=nodes;
+			G=new Array;
+			for(let i =1; i<=N; i++)
+				G[i]=new Array();
+			let possibleConnections = new Array();
+			for(let i =1; i<=N; i++)
+				for(let j=(allow_loops_opt?i:i+1); j<=N; j++)
+					possibleConnections.push(new Array(i,j));
+			for(let i=possibleConnections.length-1; i>=1; i--){
+				let random = getRandomInt(0,i);
+				let temp = possibleConnections[random];
+				possibleConnections[random]=possibleConnections[i];
+				possibleConnections[i]=temp;
+			}
+			//console.log(possibleConnections);
+			for(let k =0; k<edges; k++){
+				let i=possibleConnections[k][0];
+				let j=possibleConnections[k][1];
+				//add connection
+				let temp = new Array()
+				if(directional_opt)
+				{
+					if(getRandomFloat(0,1)<0.5)
+					{
+						temp.push(j);
+						G[i].push(temp);
+					}
+					else
+					{
+						temp.push(i);
+						G[j].push(temp);
+					}
+				}
+				else
+				{
+					temp.push(j);
+					G[i].push(temp); //connection info - node
+				}
+			}
+			
+			P=new Array();
+
+			for(let i =1; i<=N; i++)
+			{
+				P[i]=new Array();
+				P[i][0]=((2*Math.PI*i)/N);
+				P[i][1]=1;
+			}
+			//console.log(G);
+			//console.log(P);
+			//draw graph
+			drawGraph();
 		}
-		//save to global variables
-		G=graph;
-		N=nodes;
-		//for each node get position and save
-		P=new Array();
-		for(let i =1; i<=nodes; i++)
-		{
-			P[i]=new Array();
-			P[i][0]=((2*Math.PI*i)/N);
-			P[i][1]=1;
-		}
-		//draw graph
-		drawGraph();
-		return false;
+		// //get number of nodes, probability, and weight ranges from input boxes
+		// let nodes = parseInt(document.getElementById('nodes').value);
+		// let probability = parseFloat(document.getElementById('probability').value);
+		// let minWeight = parseInt(document.getElementById('min-weight').value)
+		// let maxWeight = parseInt(document.getElementById('max-weight').value)
+		// //validate input
+		// if(isNaN(nodes)||isNaN(probability))
+		// {
+		// 	drawMessage("Type number of nodes and probability!");
+		// 	return false;
+		// }
+		// if(isNaN(minWeight)||isNaN(maxWeight))
+		// {
+		// 	minWeight=0;
+		// 	maxWeight=0;
+		// }
+		// console.log(nodes+" "+probability);
+		// //create graph structure
+		// let graph = new Array();
+		// for(let i =1; i<=nodes; i++)
+		// 	graph[i]=new Array();
+		// //for each node get possible connections
+		// for(let i =0; i<nodes; i++)
+		// {
+		// 	for(let j =i; j<nodes; j++)
+		// 	{
+		// 		if(i!=j){
+		// 			//calculate probability and check if connection is made
+		// 			if(getRandomFloat(0,1)<probability)
+		// 			{
+		// 				//add connection
+		// 				graph[i+1].push(new Array(j+1,getRandomInt(minWeight,maxWeight))); //connection info - node, weight
+		// 			}
+		// 		}
+		// 	}
+		// }
+		// //save to global variables
+		// G=graph;
+		// N=nodes;
+		// //for each node get position and save
+		// P=new Array();
+		// for(let i =1; i<=nodes; i++)
+		// {
+		// 	P[i]=new Array();
+		// 	P[i][0]=((2*Math.PI*i)/N);
+		// 	P[i][1]=1;
+		// }
+		// //draw graph
+		// drawGraph();
+		// return false;
 	}
 	//get cords from angle and % of radius
 	function getCords(node, radious){
-		return new Array((c.width/2)+(radious*P[node][1]*Math.cos(P[node][0])),(c.height/2)+(radious*P[node][1]*Math.sin(P[node][0])))
+		if(node==-1)
+			return new Array((c.width/2),(c.height/2));
+		return new Array((c.width/2)+(radious*P[node][1]*Math.cos(P[node][0])),(c.height/2)+(radious*P[node][1]*Math.sin(P[node][0])));
 	}
 	//find angle and % of radius from cords
 	function findCords(pos, radious){
@@ -143,32 +266,49 @@
 		const min = Math.min(c.height, c.width);
 		//draw edges
 		//iterate through graph array
+		//get radious of nodes
+		let radi=(Math.PI*BR*(N==1?0.1:((1-1/Math.sqrt(N))/2)))/(N);
+		R=radi;
 		G.forEach((node,i)=>{
 			//for each node find all connections
 			node.forEach(connection=>{
 				//get connected node's index
-				let j = parseInt(connection.split('#')[0])
+				let j = connection[0];
 				//console.log(i,j)
-				//get positions
-				let posi=getCords(i,BR);
-				let posj=getCords(j,BR);
-				//console.log(posi,posj);
-				//calculate point for quadratic curve
-				let cpoint = new Array();
-				cpoint.push(((c.width/2)+((posi[0]+posj[0])/2))/2);
-				cpoint.push(((c.height/2)+((posi[1]+posj[1])/2))/2);
-				//draw quadratic curve from i to j
-				ctx.beginPath();
-				ctx.fillStyle='black';
-				ctx.strokeStyle='black';
-				ctx.moveTo(posi[0],posi[1]);
-				ctx.quadraticCurveTo(cpoint[0],cpoint[1],posj[0],posj[1]);
-				ctx.stroke();
+				if(i==j){
+					//get positions
+					let posi=getCords(i,BR);
+					let center=getCords(-1,0);
+					//console.log(posi,posj);
+					//calculate point for quadratic curve
+					let vector = new Array(center[0]-posi[0],center[1]-posi[1])
+					vector = new Array(vector[0]/getDistance(posi,center),vector[1]/getDistance(posi,center))
+					let cpoint = new Array(posi[0]-vector[0]*R,posi[1]-vector[1]*R);
+					ctx.beginPath();
+					ctx.fillStyle='black';
+					ctx.strokeStyle='black';
+					ctx.arc(cpoint[0],cpoint[1],R,0,2*Math.PI,false);
+					ctx.stroke();
+				}
+				else{
+					//get positions
+					let posi=getCords(i,BR);
+					let posj=getCords(j,BR);
+					//console.log(posi,posj);
+					//calculate point for quadratic curve
+					let cpoint = new Array();
+					cpoint.push(((c.width/2)+((posi[0]+posj[0])/2))/2);
+					cpoint.push(((c.height/2)+((posi[1]+posj[1])/2))/2);
+					//draw quadratic curve from i to j
+					ctx.beginPath();
+					ctx.fillStyle='black';
+					ctx.strokeStyle='black';
+					ctx.moveTo(posi[0],posi[1]);
+					ctx.quadraticCurveTo(cpoint[0],cpoint[1],posj[0],posj[1]);
+					ctx.stroke();
+				}
 			});
 		});
-		//get radious of nodes
-		let radi=(Math.PI*BR*(N==1?0.1:((1-1/Math.sqrt(N))/2)))/(N);
-		R=radi;
 		//draw nodes
 		//start drawing and set style
 		ctx.fillStyle='black';
@@ -371,15 +511,67 @@
 		}
 		drawGraph();
 	}
+	function fetchOptions(){
+		let prob_min=0, prob_max=1, prob_whole;
+		allow_loops_opt		= document.getElementById('allow_loops').checked;
+		directional_opt		= document.getElementById('directional').checked;
+		edge_weight_opt		= document.getElementById('edge_weight').checked;
+		tree_opt			= document.getElementById('tree').checked;
+		connectivity_opt	= document.getElementById('connectivity').checked;
+		use_probability_opt = document.getElementById('use_probability').checked;
+		if(use_probability_opt){
+			document.getElementById("probability_text").innerHTML="Probability:<br>";
+			prob_min=0;
+			prob_max=1;
+			prob_whole=false;
+		}else{
+			document.getElementById("probability_text").innerHTML="Number of edges:<br>";
+			let n = document.getElementById("nodes").value;
+			prob_min=1;
+			prob_max=(n*(n-1))/2;
+			prob_whole=true;
+		}
+		if(connectivity_opt)
+		{
+			let n = document.getElementById("nodes").value;
+			prob_min=n-1;
+			document.getElementById('use_probability').checked=false;
+			document.getElementById('tree').checked=false;
+		}
+		if(tree_opt)
+		{
+			document.getElementById('use_probability').checked=false;
+			document.getElementById('connectivity').checked=false;
+			document.getElementById('allow_loops').checked=false;
+
+		}
+		if(use_probability_opt)
+		{
+			document.getElementById('connectivity').checked=false;
+			document.getElementById('tree').checked=false;
+
+		}
+		if(document.getElementById("probability").value<prob_min)
+			document.getElementById("probability").value=prob_min;
+		else if(document.getElementById("probability").value>prob_max)
+			document.getElementById("probability").value=prob_max;
+		if(prob_whole)
+		{
+			document.getElementById("probability").value=parseInt(document.getElementById("probability").value);
+		}
+	}
 	onMount(()=>{
 		const c = document.getElementById("responsive-canvas");
 
 		setCanvas(c);
 		//add resize listnener
+	
 		window.addEventListener('resize', () => {
     		refreshCanvas();
 			drawGraph();
     	});
+		if(FO==null)
+			FO=setInterval(fetchOptions,10);
 	});
 	
 </script>
@@ -388,25 +580,52 @@
 <div class="opcje">
 	<div class = "grid-wrapper">
 		<div class="input-div">
-			
-			Number of nodes:<br>
-			<input type="number" id="nodes" class="number-selector" min=1 max=100>
+			<span id="node_text">Number of nodes:<br></span>
+			<input type="number" id="nodes" class="number-selector" value="10">
 		</div>
 		<div class="input-div">
-			Probability:<br>
-			<input type="number" id="probability" class="number-selector" min=0 max=1>
+			<span id="probability_text">Probability:<br></span>
+			<input type="number" id="probability" class="number-selector" disabled={tree_opt} value="0.2">
 		</div>
 		<div class="input-div">
-			Min weight:<br>
-			<input type="number" id="min-weight" class="number-selector" min=1 max=100>
+			<span id="minweight_text">Min weight:<br></span>
+			<input type="number" id="min-weight" class="number-selector" disabled={!edge_weight_opt}>
 		</div>
 		<div class="input-div">
-			Max weight:<br>
-			<input type="number" id="max-weight" class="number-selector" min=1 max=1000000>
+			<span id="maxweight_text">Max weight:<br></span>
+			<input type="number" id="max-weight" class="number-selector" disabled={!edge_weight_opt}>
 		</div>
 		<button id="submit" class="submit-input" on:click|preventDefault={generateGraph}>Generate</button>
 		<div class="options">
-			Lorem ipsum dolor, sit amet consectetur adipisicing elit. Nisi, reiciendis earum. Inventore corrupti ad itaque quos eum recusandae deleniti quisquam.
+			<div>
+				<input type="checkbox" id="allow_loops" name="allow_loops" value="allow_loops" disabled={tree_opt}>
+				<label for="allow_loops">Allow Loops</label>
+			</div>
+			<div>
+				<input type="checkbox" id="directional" name="directional" value="directional" >
+				<label for="directional">Directional</label>
+			</div>
+			<div>
+				<input type="checkbox" id="edge_weight" name="edge_weight" value="edge_weight" >
+				<label for="edge_weight">Edge weight</label>
+			</div>
+			<div>
+				<input type="checkbox" id="tree" name="tree" value="tree" disabled={connectivity_opt||use_probability_opt}>
+				<label for="tree">Generate Tree</label>
+			</div>
+			<div>
+				<input type="checkbox" id="connectivity" name="connectivity" value="connectivity" disabled={tree_opt||use_probability_opt}>
+				<label for="connectivity">Force connectivity</label>
+			</div>
+			<div>
+				<input type="checkbox" id="use_probability" name="use_probability" value="use_probability" disabled={connectivity_opt||tree_opt}>
+				<label for="use_probability">Use probability</label>
+			</div>
+			<div style="grid-column:span 2">
+				<span>
+					Note: Some of above options are mutually exclusive!
+				</span>
+			</div>
 		</div>
 		<button id="submit" class="interaction-button" on:click|preventDefault={copyGraph}>Copy Graph</button>
 		<button id="submit" class="interaction-button" on:click|preventDefault={spaceOut}>Space Out</button>
@@ -469,16 +688,28 @@
 		height: max-content;
 	}
 	.options{
+		display: grid;
+		grid-column-gap:4%;
+		grid-row-gap:20px;
+		grid-auto-rows: auto max-content;
+		grid-template-columns: repeat(4,22%);
 		text-align: center;
 		background-color: black;
 		border: 0px solid transparent;
 		color: white;
 		border-radius: 10px;
-		padding: 5px;
+		padding-left: 5px;
+		padding-right: 5px;
+		padding-top: 0px;
+		padding-bottom: 0px;
 		width: 100%;
-		height: max-content;
+		height: 100%;
 		grid-column: span 4;
-		grid-row: span 4;
+		grid-row: span 3;
+	}
+	.options > div {
+		height: fit-content;
+		padding: 10px;
 	}
 	.number-selector{
 		background-color: black;
@@ -487,6 +718,9 @@
 		color:white;
 		text-decoration: none;
 		width:80%;
+	}
+	.number-selector:disabled{
+		background-color: white;
 	}
 	.opcje{
 		margin: 0;
